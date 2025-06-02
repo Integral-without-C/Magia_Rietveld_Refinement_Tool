@@ -1,13 +1,3 @@
-import sys
-import json
-from collections import defaultdict
-from PyQt5.QtWidgets import (
-    QApplication, QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
-    QFileDialog, QTabWidget, QGroupBox, QCheckBox, QScrollArea, QTableWidget,
-    QTableWidgetItem, QMessageBox, QHeaderView, QDoubleSpinBox, QAbstractItemView,QAbstractScrollArea
-)
-from PyQt5.QtCore import Qt
-
 class StepConfigGUI(QWidget):
     def __init__(self):
         super().__init__()
@@ -25,35 +15,26 @@ class StepConfigGUI(QWidget):
 
     def init_ui(self):
         main_layout = QVBoxLayout(self)
-
-        # 顶部：文件操作与步长设置
         top_layout = QHBoxLayout()
         self.load_param_btn = QPushButton("加载参数库")
         self.load_param_btn.clicked.connect(self.load_param_json)
         top_layout.addWidget(self.load_param_btn)
-
         self.load_step_btn = QPushButton("导入步骤")
         self.load_step_btn.clicked.connect(self.import_steps)
         top_layout.addWidget(self.load_step_btn)
-
         self.save_step_btn = QPushButton("导出步骤")
         self.save_step_btn.clicked.connect(self.export_steps)
         top_layout.addWidget(self.save_step_btn)
-
         self.export_table_btn = QPushButton("导出步骤表格内容")
         self.export_table_btn.clicked.connect(self.export_step_table_to_txt)
         top_layout.addWidget(self.export_table_btn)        
-
         top_layout.addStretch()
-
         self.batch_delete_btn = QPushButton("批量删除")
         self.batch_delete_btn.clicked.connect(self.batch_delete_steps)
         top_layout.addWidget(self.batch_delete_btn)
-
         self.batch_copy_btn = QPushButton("批量复制")
         self.batch_copy_btn.clicked.connect(self.batch_copy_steps)
         top_layout.addWidget(self.batch_copy_btn)
-
         top_layout.addWidget(QLabel("统一步长:"))
         self.step_length_box = QDoubleSpinBox()
         self.step_length_box.setDecimals(2)
@@ -61,22 +42,16 @@ class StepConfigGUI(QWidget):
         self.step_length_box.setValue(self.current_step_length)
         self.step_length_box.valueChanged.connect(self.on_step_length_changed)
         top_layout.addWidget(self.step_length_box)
-
         self.batch_step_length_btn = QPushButton("批量应用步长")
         self.batch_step_length_btn.clicked.connect(self.batch_apply_step_length)
         top_layout.addWidget(self.batch_step_length_btn)
-
         self.add_step_btn = QPushButton("添加步骤")
         self.add_step_btn.clicked.connect(self.add_step)
         top_layout.addWidget(self.add_step_btn)
-
         self.reset_all_btn = QPushButton("重置所有参数")
         self.reset_all_btn.clicked.connect(self.reset_all_params)
         top_layout.addWidget(self.reset_all_btn)
-
         main_layout.addLayout(top_layout)
-
-        # 仪器参数和背底参数勾选区（加滚动区和固定高度）
         self.inst_bg_scroll = QScrollArea()
         self.inst_bg_scroll.setWidgetResizable(True)
         self.inst_bg_scroll.setFixedHeight(200)
@@ -85,23 +60,16 @@ class StepConfigGUI(QWidget):
         self.inst_bg_layout.setContentsMargins(0, 0, 0, 0)
         self.inst_bg_scroll.setWidget(self.inst_bg_widget)
         main_layout.addWidget(self.inst_bg_scroll)
-
-        # 参数库tab
         self.tab_widget = QTabWidget()
         main_layout.addWidget(self.tab_widget, stretch=2)
-
-        # 步骤表格
         self.step_table = QTableWidget()
         self.step_table.setSelectionBehavior(QAbstractItemView.SelectRows)
         self.step_table.setEditTriggers(QTableWidget.DoubleClicked | QTableWidget.SelectedClicked)
         self.step_table.setWordWrap(True)
-        # 新增：设置为像素滚动
         self.step_table.setVerticalScrollMode(QAbstractItemView.ScrollPerPixel)
         self.step_table.setHorizontalScrollMode(QAbstractItemView.ScrollPerPixel)
-        # 新增：可选，自动调整表格大小策略
         self.step_table.setSizeAdjustPolicy(QAbstractScrollArea.AdjustToContents)
         main_layout.addWidget(self.step_table, stretch=3)
-
     def export_step_table_to_txt(self):
         file_path, _ = QFileDialog.getSaveFileName(self, "导出表格内容", "", "Text Files (*.txt)")
         if not file_path:
@@ -114,13 +82,10 @@ class StepConfigGUI(QWidget):
             param_names = [self.get_param_name(param["id"]) for param in step["active_params"]]
             param_names_str = "             \n".join(param_names)
             value_str = "\n".join([f"                  {param['value']:.2f}" for param in step["active_params"]])
-            # 用制表符分隔，参数和值内部用换行
             lines.append(f"{name}\t{param_names_str}\t{value_str}")
         with open(file_path, "w", encoding="utf-8") as f:
             f.write("\n".join(lines))
         QMessageBox.information(self, "导出成功", f"表格内容已保存到 {file_path}")    
-    
-
     def load_param_json(self):
         file_path, _ = QFileDialog.getOpenFileName(self, "选择参数库JSON", "", "JSON Files (*.json)")
         if not file_path:
@@ -133,13 +98,10 @@ class StepConfigGUI(QWidget):
         self.phase_param_dict.clear()
         self.phase_group_dict.clear()
         self.param_id_map.clear()
-
-        # 判断类型（XRD/TOF），并分类
         is_xrd = any(p.get("name", "").startswith("d_") for p in self.param_lib)
         for p in self.param_lib:
             pname = p.get("name", "")
             if "phase" not in p and "group" not in p:
-                # 仪器/背底参数
                 if is_xrd:
                     if pname.startswith("d_"):
                         self.bg_params.append(p)
@@ -151,25 +113,20 @@ class StepConfigGUI(QWidget):
                     else:
                         self.instrument_params.append(p)
             elif "phase" in p and "group" in p:
-                # phase参数命名规则
                 if p["group"] != "原子参数":
                     p["name"] = f"{p['name']}_{p['phase']}"
                 self.phase_param_dict[p["phase"]].append(p)
                 self.phase_group_dict[p["phase"]][p["group"]].append(p)
             if "id" in p:
                 self.param_id_map[p["id"]] = p
-
         self.refresh_inst_bg_checkboxes()
         self.refresh_param_tabs()
         self.refresh_step_table()
-
     def refresh_inst_bg_checkboxes(self):
-        # 清空
         for i in reversed(range(self.inst_bg_layout.count())):
             widget = self.inst_bg_layout.itemAt(i).widget()
             if widget:
                 widget.setParent(None)
-        # 仪器参数
         self.inst_checkboxes = {}
         inst_group = QGroupBox("仪器参数")
         inst_layout = QVBoxLayout()
@@ -189,7 +146,6 @@ class StepConfigGUI(QWidget):
             inst_layout.addWidget(cb)
         inst_group.setLayout(inst_layout)
         self.inst_bg_layout.addWidget(inst_group)
-        # 背底参数
         self.bg_checkboxes = {}
         bg_group = QGroupBox("背底参数")
         bg_layout = QVBoxLayout()
@@ -209,7 +165,6 @@ class StepConfigGUI(QWidget):
             bg_layout.addWidget(cb)
         bg_group.setLayout(bg_layout)
         self.inst_bg_layout.addWidget(bg_group)
-
     def refresh_param_tabs(self):
         self.tab_widget.clear()
         self.phase_checkboxes = defaultdict(lambda: defaultdict(dict))  # phase -> group -> param_id -> checkbox
@@ -247,25 +202,20 @@ class StepConfigGUI(QWidget):
             tab_content.setLayout(tab_layout)
             scroll.setWidget(tab_content)
             self.tab_widget.addTab(scroll, f"phase{phase}")
-
     def select_group_checkboxes(self, checkbox_dict):
         for cb in checkbox_dict.values():
             cb.setChecked(True)
-
     def reset_group_checkboxes(self, checkbox_dict):
         for cb in checkbox_dict.values():
             if cb.isChecked():
                 cb.setChecked(False)
-
     def select_phase_group_checkboxes(self, phase, group):
         for cb in self.phase_checkboxes[phase][group].values():
             cb.setChecked(True)
-
     def reset_phase_group_checkboxes(self, phase, group):
         for cb in self.phase_checkboxes[phase][group].values():
             if cb.isChecked():
                 cb.setChecked(False)
-
     def reset_all_params(self):
         for cb in self.inst_checkboxes.values():
             if cb.isChecked():
@@ -278,7 +228,6 @@ class StepConfigGUI(QWidget):
                 for cb in self.phase_checkboxes[phase][group].values():
                     if cb.isChecked():
                         cb.setChecked(False)
-
     def get_checked_param_ids(self):
         checked_ids = []
         for pid, cb in self.inst_checkboxes.items():
@@ -293,7 +242,6 @@ class StepConfigGUI(QWidget):
                     if cb.isChecked():
                         checked_ids.append(pid)
         return checked_ids
-
     def add_step(self):
         checked_ids = self.get_checked_param_ids()
         if not checked_ids:
@@ -316,8 +264,6 @@ class StepConfigGUI(QWidget):
 
     def on_step_length_changed(self, val):
         self.current_step_length = float(val)
-        # 不自动应用，需点“批量应用步长”才生效
-
     def batch_apply_step_length(self):
         selected_rows = self.get_selected_step_rows()
         if not selected_rows:
@@ -336,7 +282,6 @@ class StepConfigGUI(QWidget):
         self.step_table.setHorizontalHeaderLabels(["选择", "步骤名称", "参数名称序列", "value序列"])
         self.step_table.setRowCount(len(self.steps))
         for row, step in enumerate(self.steps):
-            # 勾选框
             cb = QCheckBox()
             cb.setChecked(False)
             self.step_table.setCellWidget(row, 0, cb)
@@ -355,7 +300,6 @@ class StepConfigGUI(QWidget):
             param_item.setTextAlignment(Qt.AlignLeft | Qt.AlignTop)
             param_item.setFlags(Qt.ItemIsSelectable | Qt.ItemIsEnabled)
             self.step_table.setItem(row, 2, param_item)
-            # value序列（纵向排列）
             value_str = "\n".join([f"{param['value']:.2f}" for param in step["active_params"]])
             value_item = QTableWidgetItem(value_str)
             value_item.setTextAlignment(Qt.AlignLeft | Qt.AlignTop)
@@ -366,7 +310,6 @@ class StepConfigGUI(QWidget):
         self.step_table.cellChanged.connect(self.on_step_table_cell_changed)
 
     def on_step_checkbox_changed(self):
-        # 仅用于刷新时同步选中状态
         pass
 
     def get_selected_step_rows(self):
@@ -404,11 +347,9 @@ class StepConfigGUI(QWidget):
 
     def on_step_table_cell_changed(self, row, col):
         if col == 1:
-            # 步骤名称修改
             new_name = self.step_table.item(row, 1).text()
             self.steps[row]["name"] = new_name
         elif col == 3:
-            # value序列修改
             value_str = self.step_table.item(row, 3).text()
             value_list = [v.strip() for v in value_str.split("\n")]
             for i, v in enumerate(value_list):
@@ -416,7 +357,6 @@ class StepConfigGUI(QWidget):
                     self.steps[row]["active_params"][i]["value"] = float(v)
                 except Exception:
                     pass
-
     def delete_step(self):
         btn = self.sender()
         row = btn.property("row")
