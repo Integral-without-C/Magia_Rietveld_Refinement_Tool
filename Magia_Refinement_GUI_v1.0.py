@@ -1,18 +1,3 @@
-import sys
-import os
-import re
-import json
-import threading
-import time
-from datetime import datetime
-from collections import deque
-from PyQt5.QtWidgets import (
-    QApplication, QWidget, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, QPushButton,
-    QFileDialog, QComboBox, QTabWidget, QTextEdit, QProgressBar, QMessageBox,
-    QSpinBox, QGroupBox, QSplitter, QSizePolicy
-)
-from PyQt5.QtCore import Qt, QThread, pyqtSignal,QTimer
-
 CONFIG_FILE = "refine_gui_config.json"
 
 def read_text_autoenc(filepath, encodings=('utf-8', 'gbk', 'gb2312', 'latin1')):
@@ -58,7 +43,6 @@ def load_config():
     return {}
 
 def search_fp2k():
-    # 常见路径
     candidates = []
     for root in [r"C:\FullProf_Suite", r"C:\Program Files", r"C:\Program Files (x86)", r"C:\\"]:
         for dirpath, dirnames, filenames in os.walk(root):
@@ -67,7 +51,6 @@ def search_fp2k():
                     candidates.append(os.path.join(dirpath, fname))
             if len(candidates) > 10:
                 return candidates
-    # C盘全盘搜索（慢）
     for dirpath, dirnames, filenames in os.walk("C:\\"):
         for fname in filenames:
             if fname.lower() == "fp2k.exe":
@@ -77,7 +60,7 @@ def search_fp2k():
     return candidates
 
 class RefinementWorker(QThread):
-    log_signal = pyqtSignal(str, str)  # (log_type, message)
+    log_signal = pyqtSignal(str, str) 
     progress_signal = pyqtSignal(int)
     finished_signal = pyqtSignal(str)
 
@@ -169,7 +152,6 @@ class RefinementWorker(QThread):
                 continue
         self.progress_signal.emit(100)
         self.finished_signal.emit("精修已完成！报告已生成。")
-
     def modify_pcr_template(self, template_path, output_path, active_param_ids, param_lib, active_params=None):
         try:
             lines = read_text_autoenc(template_path)
@@ -237,7 +219,6 @@ class RefinementWorker(QThread):
                         log_file.write(line)
                         self.log_signal.emit("main", line.rstrip())
                         buffer.append(line.strip())
-                        # === 新增：检测未收敛警告 ===
                         warning_message = ""
                         if len(buffer) >= 2:
                             prev_line = buffer[-2]
@@ -256,7 +237,6 @@ class RefinementWorker(QThread):
                                         )
                                     warning_message = f"⚠️ 检测到 {step_name} 未收敛，已记录至: {os.path.basename(WARNING_FILE)}"
                                     self.log_signal.emit("warn", warning_message)
-                        # === 原有错误检测 ===
                         if "Lorentzian-FWHM < 0" in line:
                             error_flag = True
                             error_message = "FWHM值异常：检测到负峰宽"
@@ -283,7 +263,6 @@ class RefinementWorker(QThread):
                 return exit_code == 0 and not error_flag, error_message if error_flag else "正常完成"
         except Exception as e:
             return False, f"运行时错误: {str(e)}"
-
     def extract_chi_value(self, pcr_path):
         out_path = pcr_path.replace('.pcr', '.out')
         if not os.path.exists(out_path):
@@ -298,7 +277,6 @@ class RefinementWorker(QThread):
             content
         )
         return float(match.group(1)) if match else None
-
     def log_error(self, error_log_path, step_name, error_info):
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         log_entry = f"[{timestamp}] Step: {step_name}\nError: {error_info}\n{'='*60}\n"
@@ -319,8 +297,7 @@ class RefinementWorker(QThread):
         self._stop = True
 
 class LogTabWidget(QTabWidget):
-    MAX_DISPLAY_LINES = 100  # 新增：每个日志窗口最多显示100行
-
+    MAX_DISPLAY_LINES = 100  
     def __init__(self):
         super().__init__()
         self.log_edits = {
@@ -332,7 +309,6 @@ class LogTabWidget(QTabWidget):
         for key, edit in self.log_edits.items():
             edit.setReadOnly(True)
             self.addTab(edit, {"main":"主日志","warn":"警告","err":"错误","chi":"Chi²变化"}[key])
-        # 搜索和清空
         self.search_box = QLineEdit()
         self.search_box.setPlaceholderText("日志搜索（支持关键词）")
         self.clear_btn = QPushButton("清空当前日志")
@@ -347,13 +323,12 @@ class LogTabWidget(QTabWidget):
         self._pending_update = set()
         self._timer = QTimer(self)
         self._timer.timeout.connect(self._flush_logs)
-        self._timer.start(100)  # 每100ms刷新一次 ,防止卡死
+        self._timer.start(100)  
 
     def append_log(self, log_type, msg):
         if log_type not in self.log_buffer:
             log_type = "main"
         self.log_buffer[log_type].append(msg)
-        # 新增：只保留最新MAX_DISPLAY_LINES行
         if len(self.log_buffer[log_type]) > self.MAX_DISPLAY_LINES:
             self.log_buffer[log_type] = self.log_buffer[log_type][-self.MAX_DISPLAY_LINES:]
         self._pending_update.add(log_type)
@@ -366,7 +341,6 @@ class LogTabWidget(QTabWidget):
     def refresh_tab(self, log_type):
         edit = self.log_edits[log_type]
         keyword = self.search_box.text().strip()
-        # 只显示最新MAX_DISPLAY_LINES行
         lines = self.log_buffer[log_type][-self.MAX_DISPLAY_LINES:]
         if keyword:
             filtered = [line for line in lines if keyword in line]
@@ -393,7 +367,7 @@ class LogTabWidget(QTabWidget):
                     f.write(line + "\n")
 
 class RefinementGUI(QWidget):
-    fp2k_found = pyqtSignal(list)  # 新增信号
+    fp2k_found = pyqtSignal(list)  
     
     def __init__(self):
         super().__init__()
@@ -414,10 +388,8 @@ class RefinementGUI(QWidget):
 
     def init_ui(self):
         main_layout = QVBoxLayout(self)
-        # 文件选择区
         file_group = QGroupBox("文件与目录设置")
         file_layout = QVBoxLayout()
-        # fp2k
         fp2k_layout = QHBoxLayout()
         self.fp2k_edit = QLineEdit()
         self.fp2k_edit.setReadOnly(True)
@@ -431,7 +403,6 @@ class RefinementGUI(QWidget):
         fp2k_layout.addWidget(self.fp2k_btn)
         fp2k_layout.addWidget(self.fp2k_combo)
         file_layout.addLayout(fp2k_layout)
-        # 精修目录
         dir_layout = QHBoxLayout()
         self.dir_edit = QLineEdit()
         self.dir_edit.setReadOnly(True)
@@ -441,7 +412,6 @@ class RefinementGUI(QWidget):
         dir_layout.addWidget(self.dir_edit, 2)
         dir_layout.addWidget(self.dir_btn)
         file_layout.addLayout(dir_layout)
-        # pcr/dat选择
         pcrdat_layout = QHBoxLayout()
         self.pcr_combo = QComboBox()
         self.dat_combo = QComboBox()
@@ -450,7 +420,6 @@ class RefinementGUI(QWidget):
         pcrdat_layout.addWidget(QLabel("dat文件："))
         pcrdat_layout.addWidget(self.dat_combo)
         file_layout.addLayout(pcrdat_layout)
-        # 参数库、步骤配置
         param_layout = QHBoxLayout()
         self.param_edit = QLineEdit()
         self.param_edit.setReadOnly(True)
@@ -469,7 +438,6 @@ class RefinementGUI(QWidget):
         file_layout.addLayout(param_layout)
         file_group.setLayout(file_layout)
         main_layout.addWidget(file_group)
-        # 参数设置区
         param_group = QGroupBox("运行参数")
         paramset_layout = QHBoxLayout()
         self.timeout_spin = QSpinBox()
@@ -484,11 +452,9 @@ class RefinementGUI(QWidget):
         paramset_layout.addWidget(self.maxfile_spin)
         param_group.setLayout(paramset_layout)
         main_layout.addWidget(param_group)
-        # 日志与进度区
         splitter = QSplitter(Qt.Vertical)
         self.log_tabs = LogTabWidget()
         splitter.addWidget(self.log_tabs)
-        # 进度条
         progress_layout = QHBoxLayout()
         self.progress = QProgressBar()
         progress_layout.addWidget(QLabel("进度："))
@@ -498,7 +464,6 @@ class RefinementGUI(QWidget):
         splitter.addWidget(progress_widget)
         splitter.setSizes([600, 40])
         main_layout.addWidget(splitter, 5)
-        # 控制按钮区
         btn_layout = QHBoxLayout()
         self.run_btn = QPushButton("开始精修")
         self.pause_btn = QPushButton("暂停")
@@ -513,7 +478,6 @@ class RefinementGUI(QWidget):
         btn_layout.addWidget(self.export_log_btn)
         btn_layout.addWidget(self.export_report_btn)
         main_layout.addLayout(btn_layout)
-        # 事件绑定
         self.run_btn.clicked.connect(self.start_refinement)
         self.pause_btn.clicked.connect(self.pause_refinement)
         self.resume_btn.clicked.connect(self.resume_refinement)
@@ -525,7 +489,7 @@ class RefinementGUI(QWidget):
         self.fp2k_edit.setText("正在自动搜索fp2k.exe，请稍候...")
         def search():
             candidates = search_fp2k()
-            self.fp2k_found.emit(candidates)  # 用信号通知主线程
+            self.fp2k_found.emit(candidates) 
         t = threading.Thread(target=search, daemon=True)
         t.start()
 
@@ -578,7 +542,6 @@ class RefinementGUI(QWidget):
         fname, _ = QFileDialog.getOpenFileName(self, "选择步骤配置JSON", "", "JSON Files (*.json)")
         if fname:
             self.step_edit.setText(fname)
-            # 预加载步骤
             try:
                 with open(fname, "r", encoding="utf-8") as f:
                     data = json.load(f)
@@ -624,7 +587,6 @@ class RefinementGUI(QWidget):
         save_config(cfg)
 
     def start_refinement(self):
-        # 检查参数
         fp2k_path = self.fp2k_edit.text()
         refine_dir = self.dir_edit.text()
         pcr_file = self.pcr_combo.currentText()
@@ -642,7 +604,6 @@ class RefinementGUI(QWidget):
         if not (os.path.isfile(paramlib_path) and os.path.isfile(stepcfg_path)):
             QMessageBox.warning(self, "错误", "请正确指定参数库和步骤配置文件")
             return
-        # 加载步骤
         try:
             with open(stepcfg_path, "r", encoding="utf-8") as f:
                 data = json.load(f)
@@ -650,14 +611,11 @@ class RefinementGUI(QWidget):
         except Exception:
             QMessageBox.warning(self, "错误", "步骤配置文件格式错误")
             return
-        # 保存设置
         self.save_current_settings()
-        # 清空日志
         self.log_tabs.log_buffer = {"main": [], "warn": [], "err": [], "chi": []}
         for key in self.log_tabs.log_edits:
             self.log_tabs.log_edits[key].clear()
         self.progress.setValue(0)
-        # 配置
         config = {
             "fullprof_path": fp2k_path,
             "pcr_path": os.path.join(refine_dir, pcr_file),
