@@ -37,5 +37,3 @@
 !!!注意：该程序完全免费，仅供学习与交流使用，禁止用于任何商业用途!!!
 
 若有任何问题或建议，请联系开发者。
-
-Yujun Wan, PKUSZ Xiao Lab. wan_yujun@stu.pku.edu.cn
