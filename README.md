@@ -1,4 +1,4 @@
-========Magia_FP_Toolbar_v1.0 使用说明===========
+========Magia_Refinement_Toolbar_v1.0 使用说明===========
 
 1.请先使用Fullprof_suite制作正确的pcr。
 
