@@ -11,6 +11,10 @@ from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QFont, QPalette, QColor
 from PyQt5.QtWidgets import QStyleFactory
 
+'''
+优化了GUI界面布局，精修步骤窗口独立显示，原子参数分类显示，字体优化，背景深色
+'''
+
 class StepTableWindow(QWidget):
     def __init__(self, parent):
         super().__init__()
@@ -667,4 +671,5 @@ if __name__ == "__main__":
     app.setFont(QFont("微软雅黑"))
     win = StepConfigGUI()
     win.show()
+
     sys.exit(app.exec_())
