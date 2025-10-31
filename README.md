@@ -6,6 +6,8 @@
 
 3.新增PCR_check.py  其中允许用户设定每个原子的OCC取值合理阈值，还记得化学占有率与Fullprof占有率的区别在哪里吗？
 
+4.Magia_Step_Genertor1.1.py GUI窗口优化，精修步骤独立窗口显示，原子参数类别优化分类，字体，背景优化
+
 
 ========Magia_Refinement_Toolbar_v1.0 使用说明===========
 
