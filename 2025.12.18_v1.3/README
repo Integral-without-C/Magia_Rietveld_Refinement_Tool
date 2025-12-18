@@ -1,0 +1,19 @@
+2025.12.17
+新增参数库中phase信息的支持，精修日志和步骤概览中均会显示参数所属的phase
+新增批量精修模式选择，允许用户选择是每个dat都用同一个pcr模板，还是递归使用上一个dat精修成功后的pcr模板（经测试已经成功）
+
+要点：
+
+UI 提供两种模式：batch_mode_radio1 / batch_mode_radio2（同一pcr模板 / 递归pcr模板），通过 batch_mode_group.checkedId() 选择（0 固定，1 递推）。
+_batch_run_next_dat 中根据 self._batch_mode 决定初始模板：
+模式0：始终使用目录下选定的 pcr 文件。
+模式1：若存在 self._batch_last_pcr_path 则使用上一次成功保存的 pcr，否则使用目录下选定的 pcr。
+_batch_on_finished 会在每个 dat 完成后查找上一次“成功”步骤，构造其 pcr 文件路径（存放在当前 dat 的子目录）并赋给 self._batch_last_pcr_path，供下一文件递推使用。
+回退逻辑：若未找到成功步骤或对应 pcr 文件不存在，则回退到初始模板。
+
+注意事项（仅提示）：
+
+递推时使用的是上一个 dat 的子目录下保存的最后成功步骤的 .pcr 文件；若上一个 dat 没有成功步骤或文件缺失，会回退到初始 pcr。
+
+2025.12.18
+对步骤概览进行优化显示，增加顶部元信息显示当前策略、dat文件和初始pcr路径
